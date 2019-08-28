@@ -1,0 +1,86 @@
+extends simpleLayout
+
+block content
+  -var prettyDate = function(dateString, count, time){
+  - if(seperate(count, time)){
+  -  var date = new Date(dateString*1000);
+  -  var localeSpecificTime = date.toLocaleTimeString();
+  -  return localeSpecificTime.replace(/:\d+ /, ' ');
+  - }
+  -}
+  -var prettyDateFull = function(dateString){
+  -  var date = new Date(dateString*1000);
+  -  return date;
+  -}
+  -var seperate = function(count, times){
+  - var countTo = Math.floor((times.length)/(times.length/2))
+  - if(count%countTo==0){return true}else{ return false}
+  -}
+  script.
+    var globalRecordings = []
+    var toggleRecording = function(eventLocator, cell){
+    if(!globalRecordings.includes(cell.id)){
+      $.notify("Added For Recording", "success");
+      globalRecordings.push(cell.id)
+      cell.style.color= "green";
+      console.log(globalRecordings)
+      }else{
+        cell.style.color= "black";
+        for (var i=globalRecordings.length-1; i>=0; i--) {
+          if (globalRecordings[i] === cell.id) {
+          globalRecordings.splice(i, 1);
+          }
+        }
+        $.notify("Removed From Recording", "info");
+        console.log(globalRecordings)
+      }
+    }
+    $( document ).ready(function() {
+      $("#download").click(function(){
+      $.post({
+        traditional: true,
+        type: "POST",
+        url: "/downloadEditorResults",
+        contentType: 'application/json',
+        dataType: 'json',
+        data: JSON.stringify({ "eventLocators" : globalRecordings}),
+        success: function(json, status){
+          if (json.error) {
+            $.notify("Could not save to cloud!", "error");
+          }else{
+            $.notify("Saved recordings to the cloud!", "success");
+          }
+       },
+       error: function(result, status, err) {
+        console.log("Error loading data");
+        return;
+      }
+        });
+      });
+    });
+  .table
+    table(style={'border-collapse': 'collapse'}).table#pickle.table.table-hover.table-striped.table-bordered
+        thead
+          tr
+            th(scope='col') Service
+            if typeof time != "undefined"
+              -var count=0
+              each time_block in time.times
+                th(scope='col') #{prettyDate(time_block, count, time.times)}
+                -count++
+            else
+              th(scope='col') Events
+        tbody
+          if typeof time != "undefined"
+            each time_block in time
+              tr
+                td= time_block.channel
+                each event in time_block.events
+                  if event != ''
+                    td(id=event.eventLocator,onclick="toggleRecording('"+event.eventLocator+"', this)", style={'border-right-style': 'none'})= event.descriptions[0].title
+                  else
+                    td(style={'border-right-style': 'none', 'border-left-style': 'none'})= ' '
+  .container
+    .text-center
+      if typeof time != "undefined"
+        a.btn.btn-secondary.btn-lg.active(id="download", role='button', aria-pressed='true') Download
